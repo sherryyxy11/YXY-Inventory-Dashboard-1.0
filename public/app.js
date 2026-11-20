@@ -10,6 +10,7 @@ const state = {
   search: '',
   low: 10,
   shop: '',
+  testMode: false,
 };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -155,6 +156,12 @@ function setSynced(iso) {
   $('synced').textContent = `Synced ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
 }
 
+function showStatus(error) {
+  if (error) banner(`Couldn't reach Shopify: ${error}`);
+  else if (state.testMode) banner('Test mode: this is your real stock, but edits are NOT sent to the website. Saving only shows what would change.', true);
+  else banner('');
+}
+
 function banner(text, info = false) {
   const b = $('banner');
   b.hidden = !text;
@@ -163,7 +170,7 @@ function banner(text, info = false) {
 }
 
 // ---------- activity feed ----------
-const SOURCE = { website: 'Website', dashboard: 'Dashboard', sync: 'Shopify' };
+const SOURCE = { website: 'Website', dashboard: 'Dashboard', sync: 'Shopify', test: 'Test · not sent' };
 function logActivity(item, previous, source) {
   if (previous == null || previous === item.available) return;
   const list = $('activity');
@@ -221,6 +228,14 @@ async function save(id) {
       body: JSON.stringify({ inventoryItemId: id, quantity, expected: edit.baseline }),
     });
     const body = await res.json().catch(() => ({}));
+    if (res.ok && body.testMode) {
+      state.edits.delete(id);
+      if (body.item) state.items.set(id, body.item);
+      renderRow(id);
+      logActivity({ ...item, available: quantity }, item.available, 'test');
+      toast(`Test mode: would change ${fmt.format(item.available)} → ${fmt.format(quantity)}. Website not changed.`);
+      return;
+    }
     if (res.ok) {
       state.edits.delete(id);
       if (body.item) state.items.set(id, body.item);
@@ -311,9 +326,10 @@ async function load() {
   state.shop = data.shop;
   state.low = data.lowStockThreshold;
   state.items = new Map(data.items.map((i) => [i.inventoryItemId, i]));
-  $('store').textContent = `${data.shop} · ${data.location?.name ?? ''}${data.demo ? ' · demo data' : ''}`;
+  state.testMode = Boolean(data.testMode);
+  $('store').textContent = `${data.shop} · ${data.location?.name ?? ''}${data.demo ? ' · demo data' : ''}${data.testMode ? ' · test mode' : ''}`;
   setSynced(data.updatedAt);
-  banner(data.error ? `Couldn't reach Shopify: ${data.error}` : '');
+  showStatus(data.error);
   renderStats();
   renderTable();
 }
@@ -354,7 +370,7 @@ function connectLive() {
   es.addEventListener('reload', () => load());
   es.addEventListener('status', (e) => {
     const { error } = JSON.parse(e.data);
-    banner(error ? `Couldn't reach Shopify: ${error}` : '');
+    showStatus(error);
     if (!error) setSynced(new Date().toISOString());
   });
   es.onerror = () => {

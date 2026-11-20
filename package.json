@@ -7,6 +7,7 @@
   "engines": { "node": ">=22.9" },
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
-    "demo": "node server.js --demo"
+    "demo": "node server.js --demo",
+    "test-run": "node --env-file-if-exists=.env server.js --test"
   }
 }

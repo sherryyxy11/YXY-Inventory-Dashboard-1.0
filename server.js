@@ -16,6 +16,9 @@ import { MockShopify } from './lib/mock.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const env = process.env;
 const DEMO = env.DEMO_MODE === 'true' || process.argv.includes('--demo');
+// Test mode: reads real stock from Shopify but never writes anything back
+// (no stock changes, no webhook registration).
+const TEST_MODE = env.TEST_MODE === 'true' || process.argv.includes('--test');
 const PORT = Number(env.PORT || 3000);
 const PUBLIC_URL = (env.PUBLIC_URL || '').replace(/\/$/, '');
 const PASSWORD = env.DASHBOARD_PASSWORD || '';
@@ -42,6 +45,7 @@ const shopify = DEMO
       accessToken: env.SHOPIFY_ADMIN_TOKEN,
       clientId: env.SHOPIFY_CLIENT_ID,
       clientSecret: env.SHOPIFY_CLIENT_SECRET,
+      readOnly: TEST_MODE,
     });
 
 if (!DEMO && !PASSWORD) {
@@ -193,6 +197,11 @@ async function handleSetStock(req, res) {
   if (!item.tracked) return send(res, 422, { error: 'Inventory tracking is off for this variant in Shopify' });
   if (!item.stocked) return send(res, 422, { error: 'This variant is not stocked at this location' });
 
+  if (TEST_MODE) {
+    console.log(`[test] would set ${item.productTitle} ${item.variantTitle} ${item.available} -> ${quantity} (not sent)`);
+    return send(res, 200, { testMode: true, item, wouldSet: quantity });
+  }
+
   try {
     const errors = await shopify.setAvailable({
       inventoryItemId, locationId: state.location.id, quantity,
@@ -231,7 +240,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/inventory') {
       if (!state.updatedAt) await fullRefresh('first request');
       return send(res, 200, {
-        shop: shopify.shop, location: state.location, demo: DEMO, liveMode: state.liveMode,
+        shop: shopify.shop, location: state.location, demo: DEMO, testMode: TEST_MODE, liveMode: state.liveMode,
         lowStockThreshold: LOW_STOCK, updatedAt: state.updatedAt, error: state.error,
         items: [...state.items.values()],
       });
@@ -271,12 +280,12 @@ const server = http.createServer(async (req, res) => {
 // ---------- startup ----------
 async function start() {
   state.location = await shopify.getPrimaryLocation(env.SHOPIFY_LOCATION_ID);
-  console.log(`Store: ${shopify.shop} · Location: ${state.location.name}${DEMO ? ' · DEMO MODE' : ''}`);
+  console.log(`Store: ${shopify.shop} · Location: ${state.location.name}${DEMO ? ' · DEMO MODE' : ''}${TEST_MODE ? ' · TEST MODE (read-only, nothing is sent to Shopify)' : ''}`);
 
   if (DEMO) {
     state.liveMode = 'demo';
     shopify.startSimulatedOrders((id) => refreshOne(id, 'website'));
-  } else if (PUBLIC_URL) {
+  } else if (PUBLIC_URL && !TEST_MODE) {
     if (!WEBHOOK_SECRET) {
       console.warn('PUBLIC_URL is set but no SHOPIFY_CLIENT_SECRET/SHOPIFY_WEBHOOK_SECRET — webhooks disabled, polling instead.');
     } else {

@@ -18,6 +18,28 @@ npm run demo
 
 Open http://localhost:3000. Demo mode uses made-up products and simulates a website order every few seconds.
 
+## Test it safely before it controls the website
+
+Work through these stages in order. Only the last one can change the website.
+
+| Stage | Command | Uses real store data? | Can change the website? |
+|---|---|---|---|
+| 1. Demo | `npm run demo` | No, made-up products | No |
+| 2. Test mode | `npm run test-run` | Yes, live stock from Shopify | **No.** Saving only shows what *would* change |
+| 3. Live | `npm start` | Yes | Yes |
+
+**Test mode** (stage 2) is the real dashboard connected to your real store, with every write switched off:
+- A banner on the page says you're in test mode.
+- Pressing Save shows "would change 42 → 500" and adds a "Test · not sent" entry to the activity feed. Nothing is sent to Shopify.
+- The server refuses to register webhooks or change stock even if asked. It just re-reads stock every 30 seconds.
+- For extra safety during testing, give the Shopify app only the **read** permissions (`read_products`, `read_inventory`, `read_locations`). Then even a bug couldn't write. Add `write_inventory` when you're ready for stage 3.
+
+While in test mode, compare a few products against Shopify admin. Then buy something or change a number in Shopify admin, and check that the dashboard updates within about 30 seconds.
+
+**Before going fully live**, you can try one real edit on a product that doesn't matter: for example a draft product, or a test product you create and hide. Run `npm start`, change its stock on the dashboard, and confirm it changes in Shopify admin.
+
+You can also set `TEST_MODE=true` as an environment variable instead of using `npm run test-run`, which is handy on a hosting service.
+
 ## Connect it to the store
 
 ### 1. Create a Shopify app with inventory access
