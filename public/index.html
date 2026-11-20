@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YXY Inventory</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>YXY Inventory</h1>
+      <span class="store" id="store">Connecting…</span>
+    </div>
+    <div class="live">
+      <span class="live-pill" id="livePill"><span class="dot"></span><span id="liveText">Connecting</span></span>
+      <span class="synced" id="synced"></span>
+      <button class="btn ghost" id="refreshBtn" type="button" title="Reload all stock from Shopify">Refresh</button>
+    </div>
+  </header>
+
+  <div class="banner" id="banner" hidden></div>
+
+  <main>
+    <section class="stats" aria-label="Summary">
+      <button class="stat" data-filter="all" type="button"><span class="label">Tracked variants</span><span class="value" id="statTracked">–</span></button>
+      <button class="stat warn" data-filter="low" type="button"><span class="label">Low stock</span><span class="value" id="statLow">–</span><span class="hint" id="lowHint"></span></button>
+      <button class="stat danger" data-filter="out" type="button"><span class="label">Out of stock</span><span class="value" id="statOut">–</span></button>
+      <div class="stat static"><span class="label">Units available</span><span class="value" id="statUnits">–</span></div>
+    </section>
+
+    <div class="layout">
+      <section class="panel inventory">
+        <div class="toolbar">
+          <input type="search" id="search" placeholder="Search product, variant or SKU" autocomplete="off">
+          <div class="chips" role="tablist" id="chips">
+            <button type="button" class="chip active" data-filter="all">All</button>
+            <button type="button" class="chip" data-filter="low">Low</button>
+            <button type="button" class="chip" data-filter="out">Out of stock</button>
+            <button type="button" class="chip" data-filter="untracked">Not tracked</button>
+          </div>
+          <select id="statusFilter" aria-label="Product status">
+            <option value="ACTIVE">Active products</option>
+            <option value="all">All statuses</option>
+            <option value="DRAFT">Draft</option>
+            <option value="ARCHIVED">Archived</option>
+          </select>
+          <select id="sort" aria-label="Sort by">
+            <option value="name">Sort: Name</option>
+            <option value="stockAsc">Sort: Lowest stock</option>
+            <option value="stockDesc">Sort: Highest stock</option>
+            <option value="sku">Sort: SKU</option>
+          </select>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th class="col-sku">SKU</th>
+                <th class="num col-extra" title="Ordered but not yet fulfilled">Committed</th>
+                <th class="num col-extra" title="Physically in stock (available + committed)">On hand</th>
+                <th class="num">Available on website</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+          <p class="empty" id="empty" hidden>No products match.</p>
+        </div>
+        <p class="count" id="count"></p>
+      </section>
+
+      <aside class="panel activity">
+        <h2>Live activity</h2>
+        <ol id="activity"><li class="muted">Changes from the website and this dashboard appear here.</li></ol>
+      </aside>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js" type="module"></script>
+</body>
+</html>

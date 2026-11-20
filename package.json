@@ -1,0 +1,12 @@
+{
+  "name": "yxy-inventory-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-time inventory dashboard for the YXY Shopify store. Editing stock here updates the website.",
+  "type": "module",
+  "engines": { "node": ">=22.9" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "demo": "node server.js --demo"
+  }
+}
